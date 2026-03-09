@@ -1,28 +1,29 @@
 # 🚀 WordPress Developer Snippets & Cheat Sheet
 
-> A curated collection of battle-tested WordPress code snippets, best practices, and cheat sheets for developers. Save hours of Googling — everything you need in one place.
+> A curated collection of 225+ battle-tested WordPress code snippets, best practices, and cheat sheets for developers. Stop Googling the same things — everything you need in one place.
 
-![GitHub Stars](https://img.shields.io/github/stars/YOUR_USERNAME/wordpress-snippets?style=social)
+![GitHub Stars](https://img.shields.io/github/stars/ahmodmusa/wordpress-snippets?style=social)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![WordPress](https://img.shields.io/badge/WordPress-6.x-21759B?logo=wordpress)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4?logo=php&logoColor=white)
 ![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)
 
 ---
 
 ## ⭐ Why Star This Repo?
 
-- **200+ ready-to-use snippets** covering every aspect of WordPress development
-- Organized by category — find what you need in seconds
+- **225+ ready-to-use snippets** covering every aspect of WordPress development
+- Organised by category — find what you need in seconds
 - Covers modern WordPress: Gutenberg, REST API, Full Site Editing
-- Updated regularly with new snippets from the community
 - Each snippet is **tested, documented, and production-ready**
+- Updated regularly with new snippets from the community
 
 ---
 
 ## 📚 Table of Contents
 
 - [🪝 Hooks (Actions & Filters)](#-hooks-actions--filters)
-- [🔍 WP_Query & Database](#-wp_query--database)
+- [🔍 WP\_Query & Database](#-wp_query--database)
 - [🔐 Security](#-security)
 - [⚡ Performance](#-performance)
 - [🧱 Gutenberg & Block Editor](#-gutenberg--block-editor)
@@ -30,18 +31,16 @@
 - [🌐 REST API](#-rest-api)
 - [🎨 Theme Development](#-theme-development)
 - [🔌 Plugin Development](#-plugin-development)
-- [📋 Cheat Sheets](#-cheat-sheets)
 - [🤝 Contributing](#-contributing)
 
 ---
 
 ## 🪝 Hooks (Actions & Filters)
 
-### Add scripts & styles correctly
+### Enqueue Scripts & Styles Correctly
 ```php
 add_action( 'wp_enqueue_scripts', 'my_theme_scripts' );
-function my_theme_scripts() {
-    // Enqueue style
+function my_theme_scripts(): void {
     wp_enqueue_style(
         'my-style',
         get_template_directory_uri() . '/css/style.css',
@@ -49,16 +48,14 @@ function my_theme_scripts() {
         filemtime( get_template_directory() . '/css/style.css' )
     );
 
-    // Enqueue script (deferred, dependent on jQuery)
     wp_enqueue_script(
         'my-script',
         get_template_directory_uri() . '/js/main.js',
         [ 'jquery' ],
         filemtime( get_template_directory() . '/js/main.js' ),
-        true
+        true // Load in footer
     );
 
-    // Pass PHP data to JS
     wp_localize_script( 'my-script', 'MyData', [
         'ajax_url' => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( 'my_nonce' ),
@@ -66,95 +63,68 @@ function my_theme_scripts() {
 }
 ```
 
-### Remove default WordPress scripts/styles (speed boost)
+### Remove Unnecessary Default Scripts & Styles
 ```php
-add_action( 'wp_enqueue_scripts', 'remove_unnecessary_scripts', 100 );
-function remove_unnecessary_scripts() {
-    // Remove emoji scripts
+add_action( 'wp_enqueue_scripts', 'remove_unnecessary_assets', 100 );
+function remove_unnecessary_assets(): void {
     remove_action( 'wp_head', 'print_emoji_detection_script', 7 );
     remove_action( 'wp_print_styles', 'print_emoji_styles' );
-
-    // Remove block library CSS on frontend (if not using Gutenberg blocks)
     wp_dequeue_style( 'wp-block-library' );
     wp_dequeue_style( 'wp-block-library-theme' );
     wp_dequeue_style( 'global-styles' );
 }
 ```
 
-### Modify the login logo URL & title
+### Redirect After Login Based on Role
 ```php
-add_filter( 'login_headerurl', fn() => home_url() );
-add_filter( 'login_headertext', fn() => get_bloginfo( 'name' ) );
-```
-
-### Add custom post status
-```php
-add_action( 'init', 'register_pending_review_status' );
-function register_pending_review_status() {
-    register_post_status( 'pending_review', [
-        'label'                     => _x( 'Pending Review', 'post' ),
-        'public'                    => false,
-        'show_in_admin_all_list'    => true,
-        'show_in_admin_status_list' => true,
-        'label_count'               => _n_noop( 'Pending Review <span class="count">(%s)</span>', 'Pending Review <span class="count">(%s)</span>' ),
-    ]);
+add_filter( 'login_redirect', 'redirect_after_login', 10, 3 );
+function redirect_after_login( string $redirect_to, string $requested, $user ): string {
+    if ( isset( $user->roles ) && in_array( 'administrator', $user->roles, true ) ) {
+        return admin_url();
+    }
+    return home_url( '/dashboard/' );
 }
 ```
 
-➡️ [See all hook snippets](snippets/hooks/README.md)
+➡️ [See all 25 hook snippets](snippets/hooks/README.md)
 
 ---
 
-## 🔍 WP_Query & Database
+## 🔍 WP\_Query & Database
 
-### The perfect WP_Query template
+### The Perfect WP_Query Template
 ```php
 $args = [
     'post_type'      => 'post',
     'post_status'    => 'publish',
     'posts_per_page' => 10,
     'paged'          => get_query_var( 'paged', 1 ),
-    'orderby'        => 'date',
-    'order'          => 'DESC',
-    'meta_query'     => [
-        [
-            'key'     => '_featured',
-            'value'   => '1',
-            'compare' => '=',
-        ],
-    ],
-    'tax_query' => [
-        [
-            'taxonomy' => 'category',
-            'field'    => 'slug',
-            'terms'    => [ 'news', 'updates' ],
-        ],
-    ],
+    'no_found_rows'  => false,
 ];
 
 $query = new WP_Query( $args );
 
 if ( $query->have_posts() ) :
     while ( $query->have_posts() ) : $query->the_post();
-        // Your loop code here
+        the_title( '<h2>', '</h2>' );
     endwhile;
     wp_reset_postdata(); // ALWAYS reset after custom query
 endif;
 ```
 
-### Get posts by meta value (clean version)
+### Optimised Query — Skip What You Don't Need
 ```php
-function get_posts_by_meta( string $key, $value, string $post_type = 'post' ): array {
-    return get_posts([
-        'post_type'  => $post_type,
-        'meta_key'   => $key,
-        'meta_value' => $value,
-        'numberposts' => -1,
-    ]);
-}
+$args = [
+    'post_type'              => 'post',
+    'posts_per_page'         => 5,
+    'no_found_rows'          => true,  // Skip COUNT(*) — no pagination needed
+    'update_post_meta_cache' => false, // Skip if not using post meta
+    'update_post_term_cache' => false, // Skip if not using terms
+    'fields'                 => 'ids', // Return IDs only — fastest
+];
 ```
 
-### Safe direct database query
+### Safe Direct Database Query
 ```php
 global $wpdb;
 
@@ -168,309 +138,210 @@ $results = $wpdb->get_results(
 );
 ```
 
-➡️ [See all query snippets](snippets/queries/README.md)
+➡️ [See all 25 query snippets](snippets/queries/README.md)
 
 ---
 
 ## 🔐 Security
 
-### Always sanitize, validate, escape — the golden rule
+### The Golden Rules
 ```php
-// ❌ NEVER do this
+// ❌ NEVER
 $name = $_POST['name'];
 echo $_GET['search'];
 $wpdb->query( "SELECT * FROM wp_posts WHERE ID = " . $_GET['id'] );
 
-// ✅ ALWAYS do this
-$name   = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
-$search = esc_html( sanitize_text_field( wp_unslash( $_GET['search'] ?? '' ) ) );
-$wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->posts} WHERE ID = %d", absint( $_GET['id'] ) ) );
+// ✅ ALWAYS
+$name    = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+$search  = esc_html( sanitize_text_field( wp_unslash( $_GET['search'] ?? '' ) ) );
+$results = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->posts} WHERE ID = %d", absint( $_GET['id'] ) ) );
 ```
 
-### Verify nonces on form submission
+### Verify Nonces on Form Submission
 ```php
 // Output nonce in your form
 wp_nonce_field( 'save_my_options', 'my_nonce_field' );
 
-// Verify on form processing
+// Verify on processing
 add_action( 'admin_post_save_my_options', 'handle_save_my_options' );
-function handle_save_my_options() {
+function handle_save_my_options(): void {
     if ( ! isset( $_POST['my_nonce_field'] ) ||
          ! wp_verify_nonce( sanitize_key( $_POST['my_nonce_field'] ), 'save_my_options' ) ) {
         wp_die( 'Security check failed.' );
     }
-
-    // Check user capability
     if ( ! current_user_can( 'manage_options' ) ) {
         wp_die( 'Insufficient permissions.' );
     }
-
     // Process safely...
 }
 ```
 
-### Protect direct file access
+### Protect Direct File Access
 ```php
-// Add to top of every plugin/theme PHP file
+// Add to the top of every PHP file in your plugin or theme
 if ( ! defined( 'ABSPATH' ) ) {
-    exit; // Exit if accessed directly
+    exit;
 }
 ```
 
-➡️ [See all security snippets](snippets/security/README.md)
+➡️ [See all 25 security snippets](snippets/security/README.md)
 
 ---
 
 ## ⚡ Performance
 
-### Transients — cache expensive operations
+### Transients — Cache Expensive Operations
 ```php
-function get_expensive_data(): array {
-    $cache_key = 'my_expensive_data_v1';
+function get_featured_posts(): array {
+    $cache_key = 'featured_posts_v1';
     $cached    = get_transient( $cache_key );
 
     if ( false !== $cached ) {
         return $cached;
     }
 
-    // Expensive operation (API call, complex query, etc.)
-    $data = some_expensive_function();
+    $posts = get_posts([ 'meta_key' => '_is_featured', 'meta_value' => '1', 'numberposts' => 6 ]);
+    set_transient( $cache_key, $posts, HOUR_IN_SECONDS );
 
-    set_transient( $cache_key, $data, HOUR_IN_SECONDS );
+    return $posts;
+}
 
-    return $data;
+add_action( 'save_post', fn() => delete_transient( 'featured_posts_v1' ) );
+```
+
+### Slow Down the Heartbeat API
+```php
+add_filter( 'heartbeat_settings', function( array $settings ): array {
+    $settings['interval'] = 60; // Default is 15 seconds
+    return $settings;
+});
+```
+
+### Defer Non-Critical Scripts
+```php
+add_filter( 'script_loader_tag', 'defer_non_critical_scripts', 10, 3 );
+function defer_non_critical_scripts( string $tag, string $handle ): string {
+    $defer = [ 'my-chat-widget', 'cookie-notice' ];
+    if ( in_array( $handle, $defer, true ) ) {
+        return str_replace( ' src=', ' defer src=', $tag );
+    }
+    return $tag;
 }
 ```
 
-### Object Cache helper
-```php
-function get_cached_posts( string $key, callable $callback, int $expiry = 3600 ): mixed {
-    $cached = wp_cache_get( $key, 'my_plugin' );
-
-    if ( false === $cached ) {
-        $cached = $callback();
-        wp_cache_set( $key, $cached, 'my_plugin', $expiry );
-    }
-
-    return $cached;
-}
-```
-
-### Preload critical images (WordPress 6.3+)
-```php
-add_filter( 'wp_get_attachment_image_attributes', function( $attr, $attachment, $size ) {
-    // fetchpriority for LCP image
-    if ( is_singular() && has_post_thumbnail() && get_post_thumbnail_id() === $attachment->ID ) {
-        $attr['fetchpriority'] = 'high';
-        $attr['loading']       = 'eager';
-    }
-    return $attr;
-}, 10, 3 );
-```
-
-➡️ [See all performance snippets](snippets/performance/README.md)
+➡️ [See all 25 performance snippets](snippets/performance/README.md)
 
 ---
 
 ## 🧱 Gutenberg & Block Editor
 
-### Register a custom block category
+### Register a Custom Block Category
 ```php
-add_filter( 'block_categories_all', function( $categories ) {
+add_filter( 'block_categories_all', 'register_my_block_category', 10, 2 );
+function register_my_block_category( array $categories ): array {
     return array_merge(
-        [
-            [
-                'slug'  => 'my-plugin',
-                'title' => __( 'My Plugin Blocks', 'my-plugin' ),
-                'icon'  => 'wordpress',
-            ],
-        ],
+        [[ 'slug' => 'my-plugin', 'title' => __( 'My Plugin Blocks', 'my-plugin' ), 'icon' => 'layout' ]],
         $categories
     );
+}
+```
+
+### Disable Block Editor for Specific Post Types
+```php
+add_filter( 'use_block_editor_for_post_type', 'disable_gutenberg_for_post_types', 10, 2 );
+function disable_gutenberg_for_post_types( bool $use_editor, string $post_type ): bool {
+    $classic_types = [ 'testimonial', 'faq', 'team_member' ];
+    return in_array( $post_type, $classic_types, true ) ? false : $use_editor;
+}
+```
+
+### Filter Block Output on the Frontend
+```php
+add_filter( 'render_block_core/paragraph', function( string $content ): string {
+    return str_replace( '<p', '<p data-block="paragraph"', $content );
 });
 ```
 
-### Enqueue block editor assets only in editor
-```php
-add_action( 'enqueue_block_editor_assets', 'my_block_editor_assets' );
-function my_block_editor_assets() {
-    wp_enqueue_script(
-        'my-block-editor',
-        plugins_url( 'build/index.js', __FILE__ ),
-        [ 'wp-blocks', 'wp-element', 'wp-editor', 'wp-components' ],
-        filemtime( plugin_dir_path( __FILE__ ) . 'build/index.js' )
-    );
-}
-```
-
-### Add custom block pattern
-```php
-add_action( 'init', 'register_my_block_patterns' );
-function register_my_block_patterns() {
-    register_block_pattern(
-        'my-plugin/hero-section',
-        [
-            'title'       => __( 'Hero Section', 'my-plugin' ),
-            'description' => __( 'A full-width hero with heading and CTA button', 'my-plugin' ),
-            'categories'  => [ 'featured' ],
-            'content'     => '<!-- wp:group {"align":"full"} --><div class="wp-block-group alignfull"><!-- wp:heading --><h2>Welcome</h2><!-- /wp:heading --></div><!-- /wp:group -->',
-        ]
-    );
-}
-```
-
-➡️ [See all Gutenberg snippets](snippets/gutenberg/README.md)
+➡️ [See all 25 Gutenberg snippets](snippets/gutenberg/README.md)
 
 ---
 
 ## 🔄 AJAX
 
-### Complete AJAX setup (PHP + JS)
-
-**PHP (plugin/functions.php):**
+### Complete AJAX Setup (PHP + JS)
 ```php
-// Register AJAX action for logged-in users
-add_action( 'wp_ajax_my_action', 'handle_my_ajax' );
-// Register for non-logged-in users too
+add_action( 'wp_ajax_my_action',        'handle_my_ajax' );
 add_action( 'wp_ajax_nopriv_my_action', 'handle_my_ajax' );
 
 function handle_my_ajax(): void {
-    // Verify nonce
-    check_ajax_referer( 'my_nonce', 'nonce' );
-
-    // Get and sanitize data
+    check_ajax_referer( 'my_nonce_action', 'nonce' );
     $post_id = absint( $_POST['post_id'] ?? 0 );
-
     if ( ! $post_id ) {
-        wp_send_json_error( [ 'message' => 'Invalid post ID' ] );
+        wp_send_json_error( [ 'message' => 'Invalid post ID.' ] );
     }
-
-    // Do your work...
-    $result = do_something( $post_id );
-
-    wp_send_json_success( [ 'data' => $result ] );
+    wp_send_json_success( [ 'post_id' => $post_id ] );
 }
 ```
 
-**JavaScript:**
 ```javascript
-async function sendAjax(postId) {
-    const formData = new FormData();
-    formData.append('action', 'my_action');
-    formData.append('nonce', MyData.nonce);
-    formData.append('post_id', postId);
+const formData = new FormData();
+formData.append( 'action', 'my_action' );
+formData.append( 'nonce',  MyData.nonce );
+formData.append( 'post_id', postId );
 
-    try {
-        const response = await fetch(MyData.ajax_url, {
-            method: 'POST',
-            body: formData,
-        });
-        const data = await response.json();
-
-        if (data.success) {
-            console.log(data.data);
-        } else {
-            console.error(data.data.message);
-        }
-    } catch (error) {
-        console.error('AJAX error:', error);
-    }
-}
+const res  = await fetch( MyData.ajax_url, { method: 'POST', body: formData });
+const data = await res.json();
+if ( data.success ) console.log( data.data );
 ```
 
-➡️ [See all AJAX snippets](snippets/ajax/README.md)
+➡️ [See all 25 AJAX snippets](snippets/ajax/README.md)
 
 ---
 
 ## 🌐 REST API
 
-### Register a custom REST endpoint
+### Register a Custom Endpoint
 ```php
-add_action( 'rest_api_init', 'register_my_rest_routes' );
-function register_my_rest_routes(): void {
+add_action( 'rest_api_init', function() {
     register_rest_route( 'my-plugin/v1', '/posts/(?P<id>\d+)', [
         'methods'             => WP_REST_Server::READABLE,
         'callback'            => 'my_get_post',
-        'permission_callback' => '__return_true', // Public endpoint
+        'permission_callback' => '__return_true',
         'args'                => [
-            'id' => [
-                'validate_callback' => fn( $v ) => is_numeric( $v ),
-                'sanitize_callback' => 'absint',
-                'required'          => true,
-            ],
+            'id' => [ 'required' => true, 'sanitize_callback' => 'absint' ],
         ],
     ]);
-}
+});
 
 function my_get_post( WP_REST_Request $request ): WP_REST_Response|WP_Error {
     $post = get_post( $request->get_param( 'id' ) );
-
-    if ( ! $post ) {
-        return new WP_Error( 'not_found', 'Post not found', [ 'status' => 404 ] );
+    if ( ! $post || 'publish' !== $post->post_status ) {
+        return new WP_Error( 'not_found', 'Post not found.', [ 'status' => 404 ] );
     }
-
     return rest_ensure_response([
-        'id'      => $post->ID,
-        'title'   => get_the_title( $post ),
-        'excerpt' => get_the_excerpt( $post ),
-        'link'    => get_permalink( $post ),
+        'id'    => $post->ID,
+        'title' => get_the_title( $post ),
+        'link'  => get_permalink( $post ),
     ]);
 }
 ```
 
-➡️ [See all REST API snippets](snippets/rest-api/README.md)
+➡️ [See all 25 REST API snippets](snippets/rest-api/README.md)
 
 ---
 
 ## 🎨 Theme Development
 
-### theme.json starter (WordPress 6.x FSE)
-```json
-{
-    "$schema": "https://schemas.wp.org/trunk/theme.json",
-    "version": 2,
-    "settings": {
-        "color": {
-            "palette": [
-                { "slug": "primary", "color": "#0073aa", "name": "Primary" },
-                { "slug": "secondary", "color": "#005177", "name": "Secondary" }
-            ]
-        },
-        "typography": {
-            "fontSizes": [
-                { "slug": "small", "size": "14px", "name": "Small" },
-                { "slug": "medium", "size": "18px", "name": "Medium" },
-                { "slug": "large", "size": "24px", "name": "Large" }
-            ]
-        },
-        "layout": {
-            "contentSize": "800px",
-            "wideSize": "1200px"
-        }
-    }
-}
-```
-
-### functions.php boilerplate
+### functions.php Boilerplate
 ```php
-<?php
-/**
- * Theme setup
- */
 add_action( 'after_setup_theme', 'my_theme_setup' );
 function my_theme_setup(): void {
-    // Make theme available for translation
     load_theme_textdomain( 'my-theme', get_template_directory() . '/languages' );
-
-    // Add theme supports
     add_theme_support( 'title-tag' );
     add_theme_support( 'post-thumbnails' );
     add_theme_support( 'html5', [ 'search-form', 'comment-form', 'comment-list', 'gallery', 'caption' ] );
-    add_theme_support( 'customize-selective-refresh-widgets' );
     add_theme_support( 'wp-block-styles' );
     add_theme_support( 'align-wide' );
-
-    // Register nav menus
     register_nav_menus([
         'primary' => __( 'Primary Menu', 'my-theme' ),
         'footer'  => __( 'Footer Menu', 'my-theme' ),
@@ -478,124 +349,116 @@ function my_theme_setup(): void {
 }
 ```
 
-➡️ [See all theme snippets](snippets/theme/README.md)
+### Add Open Graph Meta Tags
+```php
+add_action( 'wp_head', 'output_open_graph_tags' );
+function output_open_graph_tags(): void {
+    if ( ! is_singular() ) return;
+    echo '<meta property="og:title" content="'   . esc_attr( get_the_title() )   . '">' . "\n";
+    echo '<meta property="og:url" content="'     . esc_url( get_permalink() )     . '">' . "\n";
+    echo '<meta property="og:image" content="'   . esc_url( get_the_post_thumbnail_url( null, 'large' ) ) . '">' . "\n";
+}
+```
+
+➡️ [See all 25 theme snippets](snippets/theme/README.md)
 
 ---
 
 ## 🔌 Plugin Development
 
-### Plugin boilerplate header
+### Plugin Header Boilerplate
 ```php
 <?php
 /**
  * Plugin Name:       My Awesome Plugin
- * Plugin URI:        https://github.com/YOUR_USERNAME/my-plugin
+ * Plugin URI:        https://github.com/ahmodmusa/my-plugin
  * Description:       A brief description of what this plugin does.
  * Version:           1.0.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
- * Author:            Your Name
- * Author URI:        https://yourwebsite.com
+ * Author:            Ahmod Musa
+ * Author URI:        https://ahmodmusa.com
  * License:           GPL v2 or later
- * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       my-plugin
- * Domain Path:       /languages
  */
-
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
-
-define( 'MY_PLUGIN_VERSION', '1.0.0' );
-define( 'MY_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
-define( 'MY_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+if ( ! defined( 'ABSPATH' ) ) exit;
 ```
 
-### Activation / Deactivation hooks
+### Activation & Deactivation Hooks
 ```php
 register_activation_hook( __FILE__, 'my_plugin_activate' );
 function my_plugin_activate(): void {
-    // Create custom database table, set defaults, etc.
-    add_option( 'my_plugin_version', MY_PLUGIN_VERSION );
+    add_option( 'my_plugin_version', '1.0.0' );
     flush_rewrite_rules();
 }
 
 register_deactivation_hook( __FILE__, 'my_plugin_deactivate' );
 function my_plugin_deactivate(): void {
+    wp_clear_scheduled_hook( 'my_plugin_cron_hook' );
     flush_rewrite_rules();
 }
 ```
 
-➡️ [See all plugin snippets](snippets/plugin/README.md)
+➡️ [See all 25 plugin snippets](snippets/plugin/README.md)
 
 ---
 
-## 📋 Cheat Sheets
+## 📊 Snippet Count
 
-### WordPress Conditional Tags
-| Condition | Function |
-|-----------|----------|
-| Is front page? | `is_front_page()` |
-| Is single post? | `is_single()` |
-| Is page? | `is_page( $id_or_slug )` |
-| Is archive? | `is_archive()` |
-| Is category archive? | `is_category( $cat )` |
-| Is tag archive? | `is_tag( $tag )` |
-| Is search results? | `is_search()` |
-| Is 404? | `is_404()` |
-| User logged in? | `is_user_logged_in()` |
-| Is admin? | `is_admin()` |
-| In The Loop? | `in_the_loop()` |
-| Has post thumbnail? | `has_post_thumbnail()` |
-
-### Useful WordPress Constants
-```php
-ABSPATH          // Absolute path to WordPress root
-WPINC            // Relative path to wp-includes
-WP_CONTENT_DIR   // Absolute path to wp-content
-WP_PLUGIN_DIR    // Absolute path to plugins
-HOUR_IN_SECONDS  // 3600
-DAY_IN_SECONDS   // 86400
-WEEK_IN_SECONDS  // 604800
-MONTH_IN_SECONDS // 2592000
-YEAR_IN_SECONDS  // 31536000
-```
-
-### WP_Query Orderby options
-```
-date | modified | title | name | ID | rand | comment_count |
-menu_order | meta_value | meta_value_num | post__in | relevance
-```
+| Category | Snippets |
+|---|---|
+| [🪝 Hooks](snippets/hooks/README.md) | 25 |
+| [🔍 WP_Query & Database](snippets/queries/README.md) | 25 |
+| [🔐 Security](snippets/security/README.md) | 25 |
+| [⚡ Performance](snippets/performance/README.md) | 25 |
+| [🧱 Gutenberg](snippets/gutenberg/README.md) | 25 |
+| [🔄 AJAX](snippets/ajax/README.md) | 25 |
+| [🌐 REST API](snippets/rest-api/README.md) | 25 |
+| [🎨 Theme Development](snippets/theme/README.md) | 25 |
+| [🔌 Plugin Development](snippets/plugin/README.md) | 25 |
+| **Total** | **225** |
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are what make this project amazing! 🎉
+Contributions are what make this repo great! 🎉
 
 1. **Fork** the repo
-2. **Create** your branch: `git checkout -b snippet/amazing-snippet`
-3. **Add** your snippet following the [contribution guidelines](.github/blob/main/CONTRIBUTING.md)
-4. **Commit**: `git commit -m 'Add: amazing snippet for X'`
-5. **Push**: `git push origin snippet/amazing-snippet`
+2. **Create** your branch: `git checkout -b snippet/my-snippet`
+3. **Add** your snippet following the [contribution guidelines](.github/CONTRIBUTING.md)
+4. **Commit**: `git commit -m 'Add: short description'`
+5. **Push**: `git push origin snippet/my-snippet`
 6. **Open a Pull Request**
 
-Please read [CONTRIBUTING.md](.github/blob/main/CONTRIBUTING.md) before contributing.
+Please read [CONTRIBUTING.md](.github/CONTRIBUTING.md) first.
 
 ---
 
 ## 📣 Spread the Word
 
-If this repo saved you time, please:
-- ⭐ **Star this repo** — it helps others find it!
-- 🐦 Share it on Twitter/X with `#WordPress #WebDev`
-- 📢 Post it in WordPress Facebook groups or Slack channels
+If this saved you time:
+- ⭐ **Star this repo** — it helps other developers find it!
+- Share on Twitter/X with `#WordPress #WebDev #OpenSource`
+- Post in WordPress Facebook groups or Slack channels
+
+---
+
+## 👨‍💻 About the Author
+
+Built and maintained by **Ahmod Musa** — a WordPress developer passionate about clean code and helping the community.
+
+- 🌐 Website: [ahmodmusa.com](https://ahmodmusa.com)
+- 💼 Fiverr: [fiverr.com/s/bd665oX](https://www.fiverr.com/s/bd665oX)
+- 🐙 GitHub: [github.com/ahmodmusa](https://github.com/ahmodmusa)
+
+Need custom WordPress development? **[Hire me on Fiverr →](https://www.fiverr.com/s/bd665oX)**
 
 ---
 
 ## 📄 License
 
-MIT © [Ahmod MUSA](https://github.com/ahmodmusa)
+MIT © [Ahmod Musa](https://ahmodmusa.com)
 
 ---
 
