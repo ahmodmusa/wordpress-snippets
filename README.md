@@ -595,11 +595,11 @@ If this repo saved you time, please:
 
 ## 📄 License
 
-MIT © [Your Name](https://github.com/YOUR_USERNAME)
+MIT © [Ahmod MUSA](https://github.com/ahmodmusa)
 
 ---
 
 <p align="center">
   Made with ❤️ for the WordPress community<br>
-  <a href="https://github.com/YOUR_USERNAME/wordpress-snippets/stargazers">⭐ Star this repo if it helped you!</a>
+  <a href="https://github.com/ahmodmusa/wordpress-snippets/stargazers">⭐ Star this repo if it helped you!</a>
 </p>
