@@ -575,12 +575,12 @@ Contributions are what make this project amazing! 🎉
 
 1. **Fork** the repo
 2. **Create** your branch: `git checkout -b snippet/amazing-snippet`
-3. **Add** your snippet following the [contribution guidelines](.github/CONTRIBUTING.md)
+3. **Add** your snippet following the [contribution guidelines](.github/blob/main/CONTRIBUTING.md)
 4. **Commit**: `git commit -m 'Add: amazing snippet for X'`
 5. **Push**: `git push origin snippet/amazing-snippet`
 6. **Open a Pull Request**
 
-Please read [CONTRIBUTING.md](.github/CONTRIBUTING.md) before contributing.
+Please read [CONTRIBUTING.md](.github/blob/main/CONTRIBUTING.md) before contributing.
 
 ---
 
