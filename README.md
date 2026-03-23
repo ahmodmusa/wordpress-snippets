@@ -10,7 +10,7 @@
 
 ---
 
-## ⭐ Why Star This Repo?
+## ⭐ Why Star This Repo ?
 
 - **225+ ready-to-use snippets** covering every aspect of WordPress development
 - Organised by category — find what you need in seconds
